@@ -1,10 +1,11 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, CSSProperties, ReactNode } from "react";
 import { ComponentMeta, Story } from "@storybook/react";
 import StoryFormRow, { IFormRowProps } from "./FormRow";
 import { Wrapper } from "./FormRow.style";
 import { useForm } from "react-hook-form";
 import Button from "../../Button/Button";
 import Radio from "../InputControl/Radio";
+import { Div } from "./FormRow.style";
 import InputText from "../../Form/InputControl/InputText";
 import { Checkbox } from "../../Form/InputControl";
 import { migratorRadioStyle } from "../InputControl/Radio/Radio.style";
@@ -12,6 +13,7 @@ import { useState } from "@storybook/addons";
 import { migratorCheckboxStyle } from "../InputControl/Checkbox/Checkbox.style";
 import { Size } from "../../../common/enum";
 import { errorStyle } from "../InputControl/InputText/InputText.style";
+import StoryDefinitionList from "../../DefinitionList/DefinitionList";
 
 export default {
   title: "Component/FormRow",
@@ -41,28 +43,37 @@ const FormRow: Story<IFormRowProps> = (args) => {
  * ** 각각의 입력 필드들은 FormRow 컴포넌트를 통해서 래핑해주세요.
  */
 
-const EJForm: Story<IFormRowProps> = (args) => {
-  type FormData = {
-    id: string;
-    name: string;
-    pwd: string;
-    pwdConfirm: string;
-    gender: string;
-    email: string;
-    phone: string;
-    address: string;
-    description: string | null;
+// type은 component 밖에 선언함
+export type FormData = {
+  id: string;
+  name: string;
+  pwd: string;
+  pwdConfirm: string;
+  gender: string;
+  email: string;
+  phone: string;
+  address: string;
+  description: string | null;
+};
+
+export type TDefinitionType = "single" | "multi";
+export interface IDefinitionValue {
+  title: string;
+  description: ReactNode;
+  hidden?: boolean;
+  style?: CSSProperties;
+  copyProps?: {
+    disabled: boolean;
+    value?: string;
   };
+}
+export interface IDefinitionListProps {
+  value: IDefinitionValue[];
+  type?: TDefinitionType;
+}
 
-  const options = useMemo(
-    () => [
-      { value: "F", label: "female" },
-      { value: "M", label: "male" },
-    ],
-    []
-  );
-
-  const { getValues, setValue, control, reset, formState, handleSubmit } =
+const EJForm: Story<IFormRowProps> = (args) => {
+  const { getValues, control, reset, formState, handleSubmit } =
     useForm<FormData>({
       mode: "onChange",
       defaultValues: {
@@ -77,18 +88,42 @@ const EJForm: Story<IFormRowProps> = (args) => {
         description: "",
       },
     });
+
+  const options = useMemo(
+    () => [
+      { value: "F", label: "female" },
+      { value: "M", label: "male" },
+    ],
+    []
+  );
+
   const [isChecked, setIsChecked] = useState<boolean>(false);
-  const checkHandler = useCallback(() => setIsChecked(!isChecked), [isChecked]);
+
+  const checkHandler = useCallback(
+    () => setIsChecked((isChecked) => !isChecked),
+    []
+  );
+
+  const [formData, setFormData] = useState<FormData>({
+    id: "",
+    name: "",
+    pwd: "",
+    pwdConfirm: "",
+    gender: "F",
+    email: "",
+    phone: "",
+    address: "",
+    description: "",
+  });
+  const key = Object.keys(formData);
 
   const pwdValidationCheck = useCallback(() => {
-    if (
-      getValues("pwd") !== "" &&
-      getValues("pwdConfirm") !== "" &&
-      getValues("pwd") !== getValues("pwdConfirm")
-    ) {
-      alert("비밀번호가 일치하지 않습니다");
-    } else if (getValues("pwd") === "" || getValues("pwdConfirm") === "") {
+    const pwd = getValues("pwd");
+    const confirm = getValues("pwdConfirm");
+    if (pwd === "" || confirm === "") {
       alert("비밀번호를 모두 입력해주세요");
+    } else if (pwd !== confirm) {
+      alert("비밀번호가 일치하지 않습니다");
     } else {
       alert("비밀번호가 일치합니다");
     }
@@ -98,172 +133,242 @@ const EJForm: Story<IFormRowProps> = (args) => {
     reset();
     setIsChecked(false);
   }, []);
+
   const onSubmit = useCallback((data: FormData) => {
-    console.log(getValues());
+    setFormData(data);
     reset();
     setIsChecked(false);
   }, []);
 
   return (
-    <Wrapper onSubmit={handleSubmit(onSubmit)}>
-      <StoryFormRow label={"ID"} required>
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <InputText
-            inputSize={Size.S}
-            control={control}
-            name={"id"}
-            placeholder={"ID"}
-            type="text"
-            rules={{ required: true }}
-          />
-        </div>
-      </StoryFormRow>
-      <StoryFormRow label={"Name"} required>
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <InputText
-            inputSize={Size.S}
-            control={control}
-            name={"name"}
-            placeholder={"Name"}
-            type="text"
-            rules={{ required: true }}
-          />
-        </div>
-      </StoryFormRow>
-      <StoryFormRow label={"Password"} required>
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <InputText
-            inputSize={Size.S}
-            control={control}
-            name={"pwd"}
-            placeholder={"Password"}
-            type="password"
-            rules={{ required: true }}
-          />
-        </div>
-      </StoryFormRow>
-      <StoryFormRow label={"Password confirm"} required>
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <InputText
-            inputSize={Size.S}
-            control={control}
-            name={"pwdConfirm"}
-            placeholder={"Password confirm"}
-            type="password"
-            rules={{
-              required: true,
-            }}
-          />{" "}
-          &nbsp;
-          <Button size={"large"} onClick={pwdValidationCheck}>
-            비밀번호 확인
-          </Button>
-        </div>
-      </StoryFormRow>
-      <StoryFormRow label={"Gender"} required>
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <Radio
-            control={control}
-            options={options}
-            name="gender"
-            radioStyle={migratorRadioStyle}
-            rules={{ required: true }}
-          />
-        </div>
-      </StoryFormRow>
-      <StoryFormRow
-        label={"Email"}
-        required
-        helperMessage={formState.errors.email?.message || ""}
-      >
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <InputText
-            inputSize={Size.S}
-            control={control}
-            sx={errorStyle}
-            name={"email"}
-            placeholder={"Email"}
-            type="email"
-            rules={{
-              required: true,
-              pattern: {
-                value:
-                  /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/,
-                message: "올바른 이메일 형식이 아닙니다.",
-              },
-            }}
-          />
-        </div>
-      </StoryFormRow>
-      <StoryFormRow
-        label={"Phone"}
-        required
-        helperMessage={formState.errors.phone?.message}
-      >
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <InputText
-            inputSize={Size.S}
-            control={control}
-            name={"phone"}
-            placeholder={"Phone"}
-            type="tel"
-            rules={{
-              required: true,
-              pattern: {
-                value: /^01([0|1|6|7|8|9])-?([0-9]{3,4})-?([0-9]{4})$/,
-                message:
-                  "01X-123-1234 또는 01X-1234-1234 형식으로 입력해주세요",
-              },
-            }}
-          />
-        </div>
-      </StoryFormRow>
-      <StoryFormRow label={"Address"} required>
-        <div style={{ margin: "5px 0 5px 0" }}>
-          <InputText
-            inputSize={Size.S}
-            control={control}
-            name={"address"}
-            placeholder={"Address"}
-            type="text"
-            rules={{ required: true }}
-          />
-        </div>
-      </StoryFormRow>
-      <StoryFormRow label={"Description"}>
-        &nbsp; &nbsp;
-        <Checkbox
-          onClick={checkHandler}
-          name="description"
-          checked={isChecked}
-          disabled={false}
-          labelProps={{
-            sx: migratorCheckboxStyle,
-          }}
-        />
-        <div style={{ margin: "5px 0 5px 0" }}>
-          {isChecked ? (
+    <>
+      <Wrapper onSubmit={handleSubmit(onSubmit)}>
+        <StoryFormRow label={"ID"} required>
+          <Div>
             <InputText
-              fullWidth
               inputSize={Size.S}
               control={control}
-              name={"description"}
-              placeholder={"Enter description"}
+              name={"id"}
+              placeholder={"ID"}
               type="text"
+              rules={{ required: true }}
             />
-          ) : (
-            false
-          )}
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow label={"Name"} required>
+          <Div>
+            <InputText
+              inputSize={Size.S}
+              control={control}
+              name={"name"}
+              placeholder={"Name"}
+              type="text"
+              rules={{ required: true }}
+            />
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow label={"Password"} required>
+          <Div>
+            <InputText
+              inputSize={Size.S}
+              control={control}
+              name={"pwd"}
+              placeholder={"Password"}
+              type="password"
+              rules={{ required: true }}
+            />
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow label={"Password confirm"} required>
+          <Div>
+            <InputText
+              inputSize={Size.S}
+              control={control}
+              name={"pwdConfirm"}
+              placeholder={"Password confirm"}
+              type="password"
+              rules={{
+                required: true,
+              }}
+            />
+            &nbsp;
+            <Button size={"large"} onClick={pwdValidationCheck}>
+              비밀번호 확인
+            </Button>
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow label={"Gender"} required>
+          <Div>
+            <Radio
+              control={control}
+              options={options}
+              name="gender"
+              radioStyle={migratorRadioStyle}
+              rules={{ required: true }}
+            />
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow
+          label={"Email"}
+          required
+          helperMessage={formState.errors.email?.message || ""}
+        >
+          <Div>
+            <InputText
+              inputSize={Size.S}
+              control={control}
+              sx={errorStyle}
+              name={"email"}
+              placeholder={"Email"}
+              type="email"
+              rules={{
+                required: true,
+                pattern: {
+                  value:
+                    /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/,
+                  message: "올바른 이메일 형식이 아닙니다.",
+                },
+              }}
+            />
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow
+          label={"Phone"}
+          required
+          helperMessage={formState.errors.phone?.message}
+        >
+          <Div>
+            <InputText
+              inputSize={Size.S}
+              control={control}
+              name={"phone"}
+              placeholder={"Phone"}
+              type="tel"
+              rules={{
+                required: true,
+                pattern: {
+                  value: /^01([0|1|6|7|8|9])-?([0-9]{3,4})-?([0-9]{4})$/,
+                  message:
+                    "01X-123-1234 또는 01X-1234-1234 형식으로 입력해주세요",
+                },
+              }}
+            />
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow label={"Address"} required>
+          <Div>
+            <InputText
+              inputSize={Size.S}
+              control={control}
+              name={"address"}
+              placeholder={"Address"}
+              type="text"
+              rules={{ required: true }}
+            />
+          </Div>
+        </StoryFormRow>
+        <StoryFormRow label={"Description"}>
+          &nbsp; &nbsp;
+          <Checkbox
+            onClick={checkHandler}
+            name="description"
+            checked={isChecked}
+            disabled={false}
+            labelProps={{
+              sx: migratorCheckboxStyle,
+            }}
+          />
+          <Div>
+            {isChecked && (
+              <InputText
+                fullWidth
+                inputSize={Size.S}
+                control={control}
+                name={"description"}
+                placeholder={"Enter description"}
+                type="text"
+              />
+            )}
+          </Div>
+        </StoryFormRow>
+        <div style={{ margin: "5px 0 5px 0" }}>
+          <Button onClick={resetHandler}>Reset</Button>
+          &nbsp;
+          <Button type="submit" disabled={!formState.isValid}>
+            Submit
+          </Button>
         </div>
-      </StoryFormRow>
-      <div style={{ margin: "5px 0 5px 0" }}>
-        <Button onClick={resetHandler}>Reset</Button>
-        &nbsp;
-        <Button type="submit" disabled={!formState.isValid}>
-          Submit
-        </Button>
-      </div>
-    </Wrapper>
+      </Wrapper>
+      <br />
+      {/*
+       * 01.11 (화)
+       * < 입력한 Form 데이터로 Definition List 출력하기 >
+       * 앞서 작성한 Form을 통해 데이터를 저장 후 DefinitionList를 사용해 데이터를 조회할 수 있도록 합니다.
+       *
+       * 1. 저장된 데이터를 DefinitionList에서 사용할 수 있도록 가공합니다.
+       *    ** 선언된 타입(IDefinitionValue)을 이용해 설계합니다.
+       *    ** title로는 form에서 사용된 field명이 출력됩니다.
+       *    ** description으로 입력한 데이터가 출력됩니다.
+       *
+       * 2. address 데이터를 클립보드 복사 할 때 입력된 값이 아닌 'my home'이 복사되도록 합니다.
+       *    ** copyProps를 활용해 구현합니다.
+       *
+       * 3. pwd 데이터는 클립보드 복사가 되지 않도록 합니다.
+       *    ** copyProps를 활용해 구현합니다.
+       */}
+
+      <StoryDefinitionList
+        {...args}
+        value={[
+          {
+            title: key[0],
+            description: formData.id,
+          },
+          {
+            title: key[1],
+            description: formData.name,
+          },
+          {
+            title: key[2],
+            description: formData.pwd,
+            copyProps: {
+              disabled: true,
+            },
+          },
+          {
+            title: key[3],
+            description: formData.pwdConfirm,
+            copyProps: {
+              disabled: true,
+            },
+          },
+          {
+            title: key[4],
+            description: formData.gender,
+          },
+          {
+            title: key[5],
+            description: formData.email,
+          },
+          {
+            title: key[6],
+            description: formData.phone,
+          },
+          {
+            title: key[7],
+            description: formData.address,
+            copyProps: {
+              disabled: false,
+              value: "my home",
+            },
+          },
+          {
+            title: key[8],
+            description: formData.description,
+          },
+        ]}
+      />
+    </>
   );
 };
 

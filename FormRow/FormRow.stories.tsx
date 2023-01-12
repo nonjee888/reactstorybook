@@ -56,22 +56,6 @@ export type FormData = {
   description: string | null;
 };
 
-export type TDefinitionType = "single" | "multi";
-export interface IDefinitionValue {
-  title: string;
-  description: ReactNode;
-  hidden?: boolean;
-  style?: CSSProperties;
-  copyProps?: {
-    disabled: boolean;
-    value?: string;
-  };
-}
-export interface IDefinitionListProps {
-  value: IDefinitionValue[];
-  type?: TDefinitionType;
-}
-
 const EJForm: Story<IFormRowProps> = (args) => {
   const { getValues, control, reset, formState, handleSubmit } =
     useForm<FormData>({
@@ -139,6 +123,34 @@ const EJForm: Story<IFormRowProps> = (args) => {
     reset();
     setIsChecked(false);
   }, []);
+
+  // key value 를 definition list 구조에 맞게 데이터 가공해 할당 하기
+  const value = useMemo(() => {
+    return Object.entries(formData).map(([key, value]) => {
+      if (key === "address") {
+        return {
+          title: key,
+          description: value,
+          copyProps: {
+            disabled: false,
+            value: "my home",
+          },
+        };
+      } else if (key === "pwdConfirm" || key === "pwd") {
+        return {
+          title: key,
+          description: value,
+          copyProps: {
+            disabled: true,
+          },
+        };
+      }
+      return {
+        title: key,
+        description: value,
+      };
+    });
+  }, [formData]);
 
   return (
     <>
@@ -317,57 +329,7 @@ const EJForm: Story<IFormRowProps> = (args) => {
        *    ** copyProps를 활용해 구현합니다.
        */}
 
-      <StoryDefinitionList
-        {...args}
-        value={[
-          {
-            title: key[0],
-            description: formData.id,
-          },
-          {
-            title: key[1],
-            description: formData.name,
-          },
-          {
-            title: key[2],
-            description: formData.pwd,
-            copyProps: {
-              disabled: true,
-            },
-          },
-          {
-            title: key[3],
-            description: formData.pwdConfirm,
-            copyProps: {
-              disabled: true,
-            },
-          },
-          {
-            title: key[4],
-            description: formData.gender,
-          },
-          {
-            title: key[5],
-            description: formData.email,
-          },
-          {
-            title: key[6],
-            description: formData.phone,
-          },
-          {
-            title: key[7],
-            description: formData.address,
-            copyProps: {
-              disabled: false,
-              value: "my home",
-            },
-          },
-          {
-            title: key[8],
-            description: formData.description,
-          },
-        ]}
-      />
+      <StoryDefinitionList value={value} />
     </>
   );
 };

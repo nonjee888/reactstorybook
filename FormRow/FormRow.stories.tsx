@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, CSSProperties, ReactNode } from "react";
+import React, { useMemo, useCallback } from "react";
 import { ComponentMeta, Story } from "@storybook/react";
 import StoryFormRow, { IFormRowProps } from "./FormRow";
 import { Wrapper } from "./FormRow.style";
@@ -13,7 +13,10 @@ import { useState } from "@storybook/addons";
 import { migratorCheckboxStyle } from "../InputControl/Checkbox/Checkbox.style";
 import { Size } from "../../../common/enum";
 import { errorStyle } from "../InputControl/InputText/InputText.style";
+import Table from "../../Table";
 import StoryDefinitionList from "../../DefinitionList/DefinitionList";
+import { EJROH_COLUMNS } from "./columns";
+import { BrowserRouter } from "react-router-dom";
 
 export default {
   title: "Component/FormRow",
@@ -82,7 +85,7 @@ const EJForm: Story<IFormRowProps> = (args) => {
   );
 
   const [isChecked, setIsChecked] = useState<boolean>(false);
-
+  const [isPwdChecked, setIsPwdChecked] = useState<boolean>(false);
   const checkHandler = useCallback(
     () => setIsChecked((isChecked) => !isChecked),
     []
@@ -99,16 +102,20 @@ const EJForm: Story<IFormRowProps> = (args) => {
     address: "",
     description: "",
   });
-  const key = Object.keys(formData);
+
+  const [tableData, setTableData] = useState<FormData[]>([]);
 
   const pwdValidationCheck = useCallback(() => {
     const pwd = getValues("pwd");
     const confirm = getValues("pwdConfirm");
+
     if (pwd === "" || confirm === "") {
       alert("비밀번호를 모두 입력해주세요");
     } else if (pwd !== confirm) {
+      setIsPwdChecked(false);
       alert("비밀번호가 일치하지 않습니다");
     } else {
+      setIsPwdChecked(true);
       alert("비밀번호가 일치합니다");
     }
   }, [getValues]);
@@ -116,13 +123,25 @@ const EJForm: Story<IFormRowProps> = (args) => {
   const resetHandler = useCallback(() => {
     reset();
     setIsChecked(false);
-  }, []);
+  }, [reset]);
 
-  const onSubmit = useCallback((data: FormData) => {
-    setFormData(data);
-    reset();
-    setIsChecked(false);
-  }, []);
+  const onSubmit = useCallback(
+    (data: FormData) => {
+      setFormData(data);
+      setTableData([...tableData, data]);
+      reset();
+      setIsChecked(false);
+    },
+    [reset, tableData]
+  );
+
+  const matchPasswordHandler = useCallback(() => {
+    if (!isPwdChecked) {
+      return;
+    } else {
+      setIsPwdChecked(false);
+    }
+  }, [isPwdChecked]);
 
   // key value 를 definition list 구조에 맞게 데이터 가공해 할당 하기
   const value = useMemo(() => {
@@ -151,7 +170,6 @@ const EJForm: Story<IFormRowProps> = (args) => {
       };
     });
   }, [formData]);
-
   return (
     <>
       <Wrapper onSubmit={handleSubmit(onSubmit)}>
@@ -186,6 +204,7 @@ const EJForm: Story<IFormRowProps> = (args) => {
               control={control}
               name={"pwd"}
               placeholder={"Password"}
+              onChange={matchPasswordHandler}
               type="password"
               rules={{ required: true }}
             />
@@ -237,7 +256,7 @@ const EJForm: Story<IFormRowProps> = (args) => {
                 required: true,
                 pattern: {
                   value:
-                    /^[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_\.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/,
+                    /^[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*@[0-9a-zA-Z]([-_.]?[0-9a-zA-Z])*\.[a-zA-Z]{2,3}$/,
                   message: "올바른 이메일 형식이 아닙니다.",
                 },
               }}
@@ -259,7 +278,7 @@ const EJForm: Story<IFormRowProps> = (args) => {
               rules={{
                 required: true,
                 pattern: {
-                  value: /^01([0|1|6|7|8|9])-?([0-9]{3,4})-?([0-9]{4})$/,
+                  value: /^01([0|1|6|7|8|9])-([0-9]{3,4})-([0-9]{4})$/,
                   message:
                     "01X-123-1234 또는 01X-1234-1234 형식으로 입력해주세요",
                 },
@@ -306,7 +325,7 @@ const EJForm: Story<IFormRowProps> = (args) => {
         <div style={{ margin: "5px 0 5px 0" }}>
           <Button onClick={resetHandler}>Reset</Button>
           &nbsp;
-          <Button type="submit" disabled={!formState.isValid}>
+          <Button type="submit" disabled={!formState.isValid || !isPwdChecked}>
             Submit
           </Button>
         </div>
@@ -330,6 +349,37 @@ const EJForm: Story<IFormRowProps> = (args) => {
        */}
 
       <StoryDefinitionList value={value} />
+      <br />
+      {/*
+       * 01.12 (목)
+       * < 입력한 Form 데이터로 Table 출력하기 >
+       * 앞서 작성한 Form을 통해 데이터를 저장 후 Table을 사용해 데이터를 조회할 수 있도록 합니다.
+       * playce-ui에 정의된 Table을 import 해서 사용합니다.
+       *
+       * 1. Form에서 입력한 데이터를 통해 Table에서 볼 수 있게 합니다.
+       *    ** 기존의 formData가 유지된 상태로 Form에서 새로 입력받은 데이터가 계속 추가될 수 있도록 합니다.
+       *    ** form에서 새로 저장할 때마다 formData에 쌓이도록 하며 최소 5개의 데이터를 저장해 Table에서 출력해줍니다.
+       *
+       * 2. table을 구성하기 위한 column을 정의해줍니다.
+       *    ** columns.ts에 정의된 EJROH_COLUMNS에 코드를 작성하고 import 해서 사용하면 됩니다.
+       *    ** 기본적으로 id, Header, accessor을 사용하고 필요에 따라 Cell 속성을 정의해 이용합니다.
+       *    ** id column은 <BlankLink> 컴포넌트를 이용해 클릭이 가능하게 합니다 (링크 이동 이벤트는 아무렇게나 하셔도 괜찮아요)
+       *    ** address column의 minWidth가 60이 되도록 합니다
+       *
+       * 3. 데이터가 없을 시에 메세지가 출력되도록 합니다.
+       *    ** "위의 Form을 이용해 데이터를 입력해주세요" 라고 출력해줍니다
+       *
+       */}
+      <BrowserRouter>
+        <Table<FormData>
+          columns={EJROH_COLUMNS}
+          data={tableData}
+          name="ejroh-table"
+          idColumn={null}
+          usePagination={true}
+          noDataComponent={"위의 Form을 이용해 데이터를 입력해주세요"}
+        />
+      </BrowserRouter>
     </>
   );
 };
